@@ -43,7 +43,8 @@ const IPInfoApp = () => {
           <h2 className="text-xl font-semibold mb-2">IP Information:</h2>
           <p><strong>IP Address:</strong> {ipInfo.ip}</p>
           <p><strong>Subnet:</strong> {ipInfo.subnet}</p>
-          <p><strong>Gateway:</strong> {ipInfo.gateway}</p>
+          <p><strong>Network:</strong> {ipInfo.network}</p>
+          <p><strong>Broadcast:</strong> {ipInfo.broadcast}</p>
           <p><strong>Class:</strong> {ipInfo.class}</p>
           <p><strong>Type:</strong> {ipInfo.is_private ? 'Private' : 'Public'}</p>
         </div>
