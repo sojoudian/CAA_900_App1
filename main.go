@@ -10,7 +10,8 @@ import (
 type IPInfo struct {
 	IP        string `json:"ip"`
 	Subnet    string `json:"subnet"`
-	Gateway   string `json:"gateway"`
+	Network   string `json:"network"`
+	Broadcast string `json:"broadcast"`
 	Class     string `json:"class"`
 	IsPrivate bool   `json:"is_private"`
 }
@@ -58,13 +59,28 @@ func getIPInfo(ipAddress string) (IPInfo, error) {
 	}
 
 	if ipv4 := ip.To4(); ipv4 != nil {
-		mask := ipv4.DefaultMask()
+		mask := net.CIDRMask(32, 32) // Start with a /32 mask
+		for i := 32; i > 0; i-- {
+			testMask := net.CIDRMask(i, 32)
+			if ipv4.Mask(testMask).Equal(ipv4.Mask(mask)) {
+				mask = testMask
+			} else {
+				break
+			}
+		}
 		network := ipv4.Mask(mask)
+		broadcast := getIPv4Broadcast(network, mask)
+
 		info.Subnet = fmt.Sprintf("%s/%d", network.String(), maskBits(mask))
-		info.Gateway = getDefaultGateway(network, mask)
+		info.Network = network.String()
+		info.Broadcast = broadcast.String()
 	} else {
-		info.Subnet = "N/A for IPv6"
-		info.Gateway = "N/A for IPv6"
+		// For IPv6, we'll use a /64 prefix as it's commonly used for subnets
+		mask := net.CIDRMask(64, 128)
+		network := ip.Mask(mask)
+		info.Subnet = fmt.Sprintf("%s/64", network.String())
+		info.Network = network.String()
+		info.Broadcast = "N/A for IPv6"
 	}
 
 	return info, nil
@@ -96,14 +112,10 @@ func maskBits(mask net.IPMask) int {
 	return bits
 }
 
-func getDefaultGateway(network net.IP, mask net.IPMask) string {
-	ip := make(net.IP, len(network))
-	copy(ip, network)
-	for i := len(ip) - 1; i >= 0; i-- {
-		if mask[i] != 255 {
-			ip[i]++
-			break
-		}
+func getIPv4Broadcast(network net.IP, mask net.IPMask) net.IP {
+	broadcast := make(net.IP, 4)
+	for i := 0; i < 4; i++ {
+		broadcast[i] = network[i] | ^mask[i]
 	}
-	return ip.String()
+	return broadcast
 }
